@@ -232,7 +232,7 @@ func (l *Logger) Debug(format string, args ...interface{}) {
 
 func (l *Logger) Print(args ...interface{}) {
 	s := fmt.Sprint(args...)
-	l.log(INFO, "%s", s)
+	l.log(DEBUG, "%s", s)
 }
 
 func init() {
