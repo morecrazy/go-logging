@@ -230,6 +230,11 @@ func (l *Logger) Debug(format string, args ...interface{}) {
 	l.log(DEBUG, format, args...)
 }
 
+func (l *Logger) Print(args ...interface{}) {
+	s := fmt.Sprint(args...)
+	l.log(INFO, "%s", s)
+}
+
 func init() {
 	Reset()
 }
