@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -109,14 +110,14 @@ func (w *FileLogWriter) SetRotateHourly(hourly bool) *FileLogWriter {
 
 func (w *FileLogWriter) Write(p []byte) (int, error) {
 	w.writeMtx.Lock()
-	defer w.writeMtx.Unlock()
-
 	if w.needRotate() {
 		if err := w.Rotate(); err != nil {
 			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+			w.writeMtx.Unlock()
 			return 0, err
 		}
 	}
+	defer w.writeMtx.Unlock()
 
 	// Perform the write
 	n, err := w.file.Write(p)
@@ -125,7 +126,7 @@ func (w *FileLogWriter) Write(p []byte) (int, error) {
 		return n, err
 	}
 
-	w.cursize += int64(n)
+	w.cursize = atomic.AddInt64(&w.cursize, int64(n))
 
 	return n, err
 }
