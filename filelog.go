@@ -3,31 +3,34 @@ package logging
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 )
 
 type FileLogWriter struct {
 	filename string
 	file     *os.File
+	writeMtx *sync.Mutex
 
 	rotate bool
 
 	// rotate at size
-	maxsize         int64
-	maxsize_cursize int64
+	maxsize int64
+	cursize int64
 
 	// rotate hourly
-	hourly          bool
-	hourly_openhour int
+	hourly   bool
+	lasthour int
 }
 
 func NewFileLogWriter(filename string, rotate bool) (*FileLogWriter, error) {
 	w := &FileLogWriter{
 		filename: filename,
 		rotate:   rotate,
+		writeMtx: &sync.Mutex{},
 	}
 	// open the file for the first time
-	if err := w.intRotate(); err != nil {
+	if err := w.Rotate(); err != nil {
 		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 		return nil, err
 	}
@@ -36,7 +39,7 @@ func NewFileLogWriter(filename string, rotate bool) (*FileLogWriter, error) {
 }
 
 // If this is called in a threaded context, it MUST be synchronized
-func (w *FileLogWriter) intRotate() error {
+func (w *FileLogWriter) Rotate() error {
 	// Close any log file that may be open
 	if w.file != nil {
 		// fmt.Fprint(w.file, fmt.Sprintf("file logger closed at %s", time.Now().String()))
@@ -77,16 +80,24 @@ func (w *FileLogWriter) intRotate() error {
 	w.file = fd
 
 	// initialize rotation values
-	w.maxsize_cursize = 0
+	w.cursize = 0
 
 	// set log open hour
-	w.hourly_openhour = time.Now().Hour()
+	w.lasthour = time.Now().Hour()
 
 	return nil
 }
 
+func (w *FileLogWriter) needRotate() bool {
+	if (w.maxsize > 0 && w.cursize >= w.maxsize) ||
+		(w.hourly && w.lasthour != time.Now().Hour()) {
+		return true
+	}
+
+	return false
+}
+
 func (w *FileLogWriter) SetRotateSize(maxsize int64) *FileLogWriter {
-	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateSize: %v\n", maxsize)
 	w.maxsize = maxsize
 	return w
 }
@@ -97,10 +108,11 @@ func (w *FileLogWriter) SetRotateHourly(hourly bool) *FileLogWriter {
 }
 
 func (w *FileLogWriter) Write(p []byte) (int, error) {
-	now := time.Now()
-	if (w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
-		(w.hourly && now.Hour() != w.hourly_openhour) {
-		if err := w.intRotate(); err != nil {
+	w.writeMtx.Lock()
+	defer w.writeMtx.Unlock()
+
+	if w.needRotate() {
+		if err := w.Rotate(); err != nil {
 			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 			return 0, err
 		}
@@ -113,7 +125,7 @@ func (w *FileLogWriter) Write(p []byte) (int, error) {
 		return n, err
 	}
 
-	w.maxsize_cursize += int64(n)
+	w.cursize += int64(n)
 
 	return n, err
 }
