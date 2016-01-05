@@ -24,19 +24,49 @@ type FileLogWriter struct {
 	lasthour int
 }
 
-func NewFileLogWriter(filename string, rotate bool) (*FileLogWriter, error) {
+func NewFileLogWriter(filename string, rotate bool, maxsize int64) (*FileLogWriter, error) {
 	w := &FileLogWriter{
 		filename: filename,
-		rotate:   rotate,
 		writeMtx: &sync.Mutex{},
+		rotate:   rotate,
+		maxsize:  maxsize,
 	}
 	// open the file for the first time
-	if err := w.Rotate(); err != nil {
-		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-		return nil, err
+	var cursize int64
+	fileInfo, err := os.Lstat(filename)
+	if err != nil {
+		cursize = 0
+	} else {
+		cursize = fileInfo.Size()
 	}
-
+	if rotate && (maxsize > 0 && cursize >= maxsize) {
+		if err := w.Rotate(); err != nil {
+			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+			return nil, err
+		}
+	} else {
+		if err = w.openFile(cursize); err != nil {
+			return nil, err
+		}
+	}
 	return w, nil
+}
+
+func (w *FileLogWriter) openFile(cursize int64) error {
+	// Open the log file
+	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		return err
+	}
+	w.file = fd
+
+	// set file current size
+	w.cursize = cursize
+
+	// set log open hour
+	w.lasthour = time.Now().Hour()
+
+	return nil
 }
 
 // If this is called in a threaded context, it MUST be synchronized
@@ -74,19 +104,7 @@ func (w *FileLogWriter) Rotate() error {
 	}
 
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
-	if err != nil {
-		return err
-	}
-	w.file = fd
-
-	// initialize rotation values
-	w.cursize = 0
-
-	// set log open hour
-	w.lasthour = time.Now().Hour()
-
-	return nil
+	return w.openFile(0)
 }
 
 func (w *FileLogWriter) needRotate() bool {
