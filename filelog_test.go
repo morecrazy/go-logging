@@ -14,13 +14,13 @@ const (
 )
 
 func TestFilelogRotate(t *testing.T) {
-	fl, err := NewFileLogWriter(LOG_FILE, true)
+	fl, err := NewFileLogWriter(LOG_FILE, true, 100)
 	if err != nil {
 		t.Error(err)
 	}
 
 	log := MustGetLogger("filelog")
-	fl = fl.SetRotateSize(10 * 10).SetRotateHourly(true)
+	fl = fl.SetRotateHourly(true)
 	backend := NewLogBackend(fl, "", 0)
 	SetBackend(backend)
 
