@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -119,6 +121,19 @@ func Reset() {
 	b.SetLevel(DEBUG, "")
 	SetFormatter(DefaultFormatter)
 	timeNow = time.Now
+}
+
+func getGoroutineId() string {
+	buf := make([]byte, 50)
+	runtime.Stack(buf, false)
+
+	str := string(buf)
+	pat := regexp.MustCompile("goroutine ([0-9]*)")
+	subs := pat.FindStringSubmatch(str)
+	if len(subs) >= 2 {
+		return subs[1]
+	}
+	return ""
 }
 
 // InitForTesting is a convenient method when using logging in a test. Once

@@ -40,6 +40,8 @@ const (
 	fmtVerbLongfunc
 	fmtVerbShortfunc
 	fmtVerbLevelColor
+	fmtVerbGoroutineId
+	fmtVerbGoroutineCount
 
 	// Keep last, there are no match for these below.
 	fmtVerbUnknown
@@ -61,6 +63,8 @@ var fmtVerbs = []string{
 	"longfunc",
 	"shortfunc",
 	"color",
+	"goroutine_id",
+	"goroutine_count",
 }
 
 const rfc3339Milli = "2006-01-02T15:04:05.999Z07:00"
@@ -80,6 +84,8 @@ var defaultVerbsLayout = []string{
 	"s",
 	"s",
 	"",
+	"s",
+	"d",
 }
 
 var (
@@ -311,6 +317,10 @@ func (f *stringFormatter) Format(calldepth int, r *Record, output io.Writer) err
 						v = formatFuncName(part.verb, f.Name())
 					}
 				}
+			case fmtVerbGoroutineId:
+				v = getGoroutineId()
+			case fmtVerbGoroutineCount:
+				v = runtime.NumGoroutine()
 			default:
 				panic("unhandled format part")
 			}
