@@ -4,8 +4,29 @@
 
 package logging
 
+import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
 // defaultBackend is the backend used for all logging calls.
 var defaultBackend LeveledBackend
+
+func init() {
+	go handleSignals()
+}
+
+func handleSignals() {
+	for {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGALRM) // kill -10
+		s := <-c
+		newLevel := defaultBackend.CodoonSetLevel("")
+		fmt.Printf("[go-logging] signal received:%s, log level set to [%s]\n", s.String(), levelNames[newLevel])
+	}
+}
 
 // Backend is the interface which a log backend need to implement to be able to
 // be used as a logging backend.

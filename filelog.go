@@ -1,3 +1,5 @@
+// by liudanking 2015.12
+
 package logging
 
 import (

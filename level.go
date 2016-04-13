@@ -52,6 +52,7 @@ type Leveled interface {
 	GetLevel(string) Level
 	SetLevel(Level, string)
 	IsEnabledFor(Level, string) bool
+	CodoonSetLevel(string) Level
 }
 
 // LeveledBackend is a log backend with additional knobs for setting levels on
@@ -66,6 +67,7 @@ type moduleLeveled struct {
 	backend   Backend
 	formatter Formatter
 	once      sync.Once
+	mtx       sync.RWMutex
 }
 
 // AddModuleLevel wraps a log backend with knobs to have different log levels
@@ -84,6 +86,7 @@ func AddModuleLevel(backend Backend) LeveledBackend {
 
 // GetLevel returns the log level for the given module.
 func (l *moduleLeveled) GetLevel(module string) Level {
+	l.mtx.RLock()
 	level, exists := l.levels[module]
 	if exists == false {
 		level, exists = l.levels[""]
@@ -92,12 +95,28 @@ func (l *moduleLeveled) GetLevel(module string) Level {
 			level = DEBUG
 		}
 	}
+	l.mtx.RUnlock()
 	return level
 }
 
-// SetLevel sets the log level for the given module.
+// SetLevel sets the log level for the given module
 func (l *moduleLeveled) SetLevel(level Level, module string) {
+	l.mtx.Lock()
 	l.levels[module] = level
+	l.mtx.Unlock()
+}
+
+// CodoonSetLevel set level info to debug, or vice versa
+func (l *moduleLeveled) CodoonSetLevel(module string) Level {
+	oldLevel := l.GetLevel(module)
+	if oldLevel == INFO {
+		l.SetLevel(DEBUG, module)
+		return DEBUG
+	} else if oldLevel == DEBUG {
+		l.SetLevel(INFO, module)
+		return INFO
+	}
+	return oldLevel
 }
 
 // IsEnabledFor will return true if logging is enabled for the given module.
