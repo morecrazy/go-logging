@@ -70,6 +70,16 @@ func (b *multiLogger) CodoonSetLevel(module string) Level {
 	return newLevel
 }
 
+// Do NOT call, just make multiLogger as type LeveledBackend interface
+func (b *multiLogger) GetLevelExt() map[string]int {
+	return map[string]int{}
+}
+
+// Do NOT call, just make multiLogger as type LeveledBackend interface
+func (b *multiLogger) SetLevelExt(levelInt int, module string) {
+
+}
+
 // IsEnabledFor returns true if any of the backends are enabled for it.
 func (b *multiLogger) IsEnabledFor(level Level, module string) bool {
 	for _, backend := range b.backends {

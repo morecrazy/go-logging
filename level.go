@@ -52,7 +52,9 @@ type Leveled interface {
 	GetLevel(string) Level
 	SetLevel(Level, string)
 	IsEnabledFor(Level, string) bool
-	CodoonSetLevel(string) Level
+	CodoonSetLevel(string) Level // set level info to debug, or vice versa
+	GetLevelExt() map[string]int
+	SetLevelExt(int, string)
 }
 
 // LeveledBackend is a log backend with additional knobs for setting levels on
@@ -102,7 +104,13 @@ func (l *moduleLeveled) GetLevel(module string) Level {
 // SetLevel sets the log level for the given module
 func (l *moduleLeveled) SetLevel(level Level, module string) {
 	l.mtx.Lock()
-	l.levels[module] = level
+	if module == "*" {
+		for m, _ := range l.levels {
+			l.levels[m] = level
+		}
+	} else {
+		l.levels[module] = level
+	}
 	l.mtx.Unlock()
 }
 
@@ -117,6 +125,21 @@ func (l *moduleLeveled) CodoonSetLevel(module string) Level {
 		return INFO
 	}
 	return oldLevel
+}
+
+// GetLevelExt get all levels map[module]level
+// Use level as type int to avoid importing go-logging in other packages
+func (l *moduleLeveled) GetLevelExt() map[string]int {
+	ret := map[string]int{}
+	for k, v := range l.levels {
+		ret[k] = int(v)
+	}
+	return ret
+}
+
+func (l *moduleLeveled) SetLevelExt(levelInt int, module string) {
+	level := Level(levelInt)
+	l.SetLevel(level, module)
 }
 
 // IsEnabledFor will return true if logging is enabled for the given module.
