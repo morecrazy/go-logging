@@ -56,7 +56,7 @@ func NewFileLogWriter(filename string, rotate bool, maxsize int64) (*FileLogWrit
 
 func (w *FileLogWriter) openFile(cursize int64) error {
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
