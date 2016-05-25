@@ -137,7 +137,7 @@ func (w *FileLogWriter) Write(p []byte) (int, error) {
 			return 0, err
 		}
 	}
-	defer w.writeMtx.Unlock()
+	w.writeMtx.Unlock()
 
 	// Perform the write
 	n, err := w.file.Write(p)
