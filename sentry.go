@@ -15,7 +15,7 @@ func NewSentryBackend(client *raven.Client, level Level) (b *SentryBackend) {
 }
 
 func trace() *raven.Stacktrace {
-	return raven.NewStacktrace(3, 2, nil)
+	return raven.NewStacktrace(3, 3, nil)
 }
 
 func (b *SentryBackend) Log(level Level, calldepth int, rec *Record) error {
